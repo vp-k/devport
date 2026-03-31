@@ -1,0 +1,15 @@
+# Build artifacts
+devport
+devport.exe
+*.exe
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Go workspace
+/vendor/
+
+# OS
+.DS_Store
+Thumbs.db
