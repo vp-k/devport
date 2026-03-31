@@ -4,8 +4,8 @@ devport.exe
 *.exe
 
 # Test coverage
-coverage.out
-coverage.html
+*.out
+*.html
 
 # Go workspace
 /vendor/
