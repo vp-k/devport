@@ -179,3 +179,105 @@ func TestDetectConfigFileTakesPriorityOverDependency(t *testing.T) {
 		t.Errorf("Detect = %q, want vite (config file > dependency)", got)
 	}
 }
+
+// ---- Bun detection ----
+
+func TestDetectBunLockb(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "bun.lockb", "")
+	if got := Detect(dir); got != "bun" {
+		t.Errorf("Detect = %q, want bun", got)
+	}
+}
+
+func TestDetectBunfigToml(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "bunfig.toml", "")
+	if got := Detect(dir); got != "bun" {
+		t.Errorf("Detect = %q, want bun", got)
+	}
+}
+
+// ---- Deno detection ----
+
+func TestDetectDenoJSON(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "deno.json", "{}")
+	if got := Detect(dir); got != "deno" {
+		t.Errorf("Detect = %q, want deno", got)
+	}
+}
+
+func TestDetectDenoJSONC(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "deno.jsonc", "{}")
+	if got := Detect(dir); got != "deno" {
+		t.Errorf("Detect = %q, want deno", got)
+	}
+}
+
+// ---- Go framework detection ----
+
+func writeGoMod(t *testing.T, dir, content string) {
+	t.Helper()
+	writeFile(t, dir, "go.mod", content)
+}
+
+func TestDetectGin(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\nrequire github.com/gin-gonic/gin v1.9.0\n")
+	if got := Detect(dir); got != "gin" {
+		t.Errorf("Detect = %q, want gin", got)
+	}
+}
+
+func TestDetectEcho(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\nrequire github.com/labstack/echo/v4 v4.12.0\n")
+	if got := Detect(dir); got != "echo" {
+		t.Errorf("Detect = %q, want echo", got)
+	}
+}
+
+func TestDetectFiber(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\nrequire github.com/gofiber/fiber/v2 v2.52.0\n")
+	if got := Detect(dir); got != "fiber" {
+		t.Errorf("Detect = %q, want fiber", got)
+	}
+}
+
+func TestDetectChi(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\nrequire github.com/go-chi/chi/v5 v5.0.12\n")
+	if got := Detect(dir); got != "chi" {
+		t.Errorf("Detect = %q, want chi", got)
+	}
+}
+
+func TestDetectGoGeneric(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\ngo 1.22\n")
+	if got := Detect(dir); got != "go" {
+		t.Errorf("Detect = %q, want go", got)
+	}
+}
+
+// Gin takes priority over echo when both are present.
+func TestDetectGoPriorityGinOverEcho(t *testing.T) {
+	dir := t.TempDir()
+	writeGoMod(t, dir, "module example\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.0\n\tgithub.com/labstack/echo/v4 v4.12.0\n)\n")
+	if got := Detect(dir); got != "gin" {
+		t.Errorf("Detect = %q, want gin (gin > echo priority)", got)
+	}
+}
+
+// Config file still takes priority over go.mod.
+func TestDetectConfigFileTakesPriorityOverGoMod(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "next.config.js", "module.exports = {}")
+	writeGoMod(t, dir, "module example\n\nrequire github.com/gin-gonic/gin v1.9.0\n")
+	if got := Detect(dir); got != "next" {
+		t.Errorf("Detect = %q, want next (config file > go.mod)", got)
+	}
+}

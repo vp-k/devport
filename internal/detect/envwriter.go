@@ -27,6 +27,13 @@ var frameworkEnvDefaults = map[string][2]string{
 	"angular": {".env.local", "PORT"},
 	"nest":    {".env", "PORT"},
 	"cra":     {".env.local", "PORT"},
+	"bun":     {".env", "PORT"},
+	"deno":    {".env", "PORT"},
+	"go":      {".env", "PORT"},
+	"gin":     {".env", "PORT"},
+	"echo":    {".env", "PORT"},
+	"fiber":   {".env", "PORT"},
+	"chi":     {".env", "PORT"},
 }
 
 // EnvConfigFor returns the EnvConfig for the given framework, applying any

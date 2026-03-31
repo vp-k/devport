@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Detect returns the framework name for the project in dir, or "" if unknown.
-// Detection priority: config files first, then package.json dependencies.
+// Detection priority (highest to lowest):
+//  1. Config files (next/vite/angular)
+//  2. Bun/Deno runtime files
+//  3. Go module (gin/echo/fiber/chi/go)
+//  4. package.json dependencies
 func Detect(dir string) string {
 	// --- Config file detection (highest priority) ---
 	configChecks := []struct {
@@ -25,6 +30,19 @@ func Detect(dir string) string {
 				return check.framework
 			}
 		}
+	}
+
+	// --- Bun / Deno runtime detection ---
+	if fileExists(filepath.Join(dir, "bun.lockb")) || fileExists(filepath.Join(dir, "bunfig.toml")) {
+		return "bun"
+	}
+	if fileExists(filepath.Join(dir, "deno.json")) || fileExists(filepath.Join(dir, "deno.jsonc")) {
+		return "deno"
+	}
+
+	// --- Go module detection ---
+	if goFW := detectGoFramework(dir); goFW != "" {
+		return goFW
 	}
 
 	// --- package.json dependency detection ---
@@ -52,6 +70,35 @@ func Detect(dir string) string {
 	}
 
 	return ""
+}
+
+// detectGoFramework returns a Go framework name if go.mod is present in dir.
+// Priority: gin → echo → fiber → chi → "go" (generic).
+// Returns "" if go.mod is absent.
+func detectGoFramework(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return ""
+	}
+	content := string(data)
+
+	goFrameworks := []struct {
+		module    string
+		framework string
+	}{
+		{"gin-gonic/gin", "gin"},
+		{"labstack/echo", "echo"},
+		{"gofiber/fiber", "fiber"},
+		{"go-chi/chi", "chi"},
+	}
+
+	for _, fw := range goFrameworks {
+		if strings.Contains(content, fw.module) {
+			return fw.framework
+		}
+	}
+
+	return "go"
 }
 
 // readDependencies returns the merged dependencies+devDependencies map from
