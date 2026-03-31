@@ -1,0 +1,22 @@
+mode: set
+github.com/user01/devport/internal/allocator/allocator.go:20.89,22.39 1 1
+github.com/user01/devport/internal/allocator/allocator.go:22.39,24.3 1 1
+github.com/user01/devport/internal/allocator/allocator.go:26.2,29.43 3 1
+github.com/user01/devport/internal/allocator/allocator.go:29.43,30.17 1 1
+github.com/user01/devport/internal/allocator/allocator.go:30.17,31.12 1 1
+github.com/user01/devport/internal/allocator/allocator.go:33.3,33.22 1 1
+github.com/user01/devport/internal/allocator/allocator.go:33.22,35.4 1 1
+github.com/user01/devport/internal/allocator/allocator.go:38.2,38.73 1 1
+github.com/user01/devport/internal/allocator/allocator.go:42.91,43.44 1 1
+github.com/user01/devport/internal/allocator/allocator.go:43.44,45.3 1 1
+github.com/user01/devport/internal/allocator/allocator.go:46.2,46.45 1 1
+github.com/user01/devport/internal/allocator/allocator.go:46.45,48.3 1 1
+github.com/user01/devport/internal/allocator/allocator.go:49.2,49.35 1 1
+github.com/user01/devport/internal/allocator/allocator.go:53.53,55.36 2 1
+github.com/user01/devport/internal/allocator/allocator.go:55.36,57.3 1 1
+github.com/user01/devport/internal/allocator/allocator.go:58.2,58.33 1 1
+github.com/user01/devport/internal/allocator/allocator.go:58.33,60.3 1 1
+github.com/user01/devport/internal/allocator/allocator.go:61.2,61.13 1 1
+github.com/user01/devport/internal/allocator/probe.go:10.31,12.16 2 1
+github.com/user01/devport/internal/allocator/probe.go:12.16,14.3 1 1
+github.com/user01/devport/internal/allocator/probe.go:15.2,16.13 2 1

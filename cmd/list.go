@@ -40,6 +40,10 @@ func runList(cmd *cobra.Command, _ []string) error {
 	}
 
 	if len(reg.Entries) == 0 {
+		if listFlagJSON {
+			fmt.Fprintln(cmd.OutOrStdout(), "[]")
+			return nil
+		}
 		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered.")
 		return nil
 	}

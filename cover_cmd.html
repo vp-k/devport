@@ -1,0 +1,917 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/user01/devport/cmd/env.go (76.5%)</option>
+				
+				<option value="file1">github.com/user01/devport/cmd/free.go (80.4%)</option>
+				
+				<option value="file2">github.com/user01/devport/cmd/get.go (83.8%)</option>
+				
+				<option value="file3">github.com/user01/devport/cmd/init.go (78.8%)</option>
+				
+				<option value="file4">github.com/user01/devport/cmd/list.go (94.7%)</option>
+				
+				<option value="file5">github.com/user01/devport/cmd/reset.go (83.3%)</option>
+				
+				<option value="file6">github.com/user01/devport/cmd/root.go (50.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package cmd
+
+import (
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/allocator"
+        "github.com/user01/devport/internal/detect"
+        "github.com/user01/devport/internal/registry"
+        "github.com/user01/devport/internal/resolver"
+)
+
+var envCmd = &amp;cobra.Command{
+        Use:   "env",
+        Short: "Write PORT to the project's env file (.env.local or .env)",
+        RunE:  runEnv,
+}
+
+var (
+        envFlagOutput    string
+        envFlagVarName   string
+        envFlagFramework string
+)
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(envCmd)
+        envCmd.Flags().StringVar(&amp;envFlagOutput, "output", "", "Override output file path")
+        envCmd.Flags().StringVar(&amp;envFlagVarName, "var-name", "", "Override env variable name")
+        envCmd.Flags().StringVar(&amp;envFlagFramework, "framework", "", "Override framework detection")
+}</span>
+
+func runEnv(cmd *cobra.Command, _ []string) error <span class="cov10" title="5">{
+        dir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("getwd: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">res, err := resolver.Resolve(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("resolve key: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">framework := envFlagFramework
+        if framework == "" </span><span class="cov8" title="4">{
+                framework = detect.Detect(dir)
+        }</span>
+
+        <span class="cov10" title="5">isNew := reg.Entries[res.Key] == nil
+
+        port, err := allocator.Allocate(res.Key, framework, reg, allocator.Options{})
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov10" title="5">now := time.Now().UTC()
+        if isNew </span><span class="cov10" title="5">{
+                reg.Entries[res.Key] = &amp;registry.Entry{
+                        Port:           port,
+                        KeySource:      registry.KeySource(res.Source),
+                        DisplayName:    res.Name,
+                        ProjectPath:    dir,
+                        Framework:      framework,
+                        AllocatedAt:    now,
+                        LastAccessedAt: now,
+                }
+        }</span> else<span class="cov0" title="0"> {
+                reg.Entries[res.Key].LastAccessedAt = now
+        }</span>
+
+        <span class="cov10" title="5">if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("save registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">cfg := detect.EnvConfigFor(framework, detect.EnvOptions{
+                Output:  envFlagOutput,
+                VarName: envFlagVarName,
+        })
+
+        if err := detect.WriteEnvFile(dir, port, cfg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("write env file: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s=%d to %s\n", cfg.VarName, port, cfg.File)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package cmd
+
+import (
+        "fmt"
+        "os"
+        "strconv"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/registry"
+        "github.com/user01/devport/internal/resolver"
+)
+
+var freeCmd = &amp;cobra.Command{
+        Use:   "free [key|port]",
+        Short: "Release the port registration for a project",
+        Args:  cobra.MaximumNArgs(1),
+        RunE:  runFree,
+}
+
+var (
+        freeFlagAll   bool
+        freeFlagForce bool
+)
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(freeCmd)
+        freeCmd.Flags().BoolVar(&amp;freeFlagAll, "all", false, "Release all registrations")
+        freeCmd.Flags().BoolVar(&amp;freeFlagForce, "force", false, "Skip confirmation prompt")
+}</span>
+
+// confirmFn is injectable for testing.
+var confirmFn = func(prompt string) bool <span class="cov0" title="0">{
+        fmt.Print(prompt)
+        var answer string
+        fmt.Scanln(&amp;answer)
+        return answer == "y" || answer == "Y" || answer == "yes"
+}</span>
+
+func runFree(cmd *cobra.Command, args []string) error <span class="cov10" title="8">{
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="8">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="8">if freeFlagAll </span><span class="cov4" title="2">{
+                if !freeFlagForce &amp;&amp; !confirmFn("Release ALL port registrations? [y/N] ") </span><span class="cov1" title="1">{
+                        fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+                        return nil
+                }</span>
+                <span class="cov1" title="1">reg.Entries = make(map[string]*registry.Entry)
+                if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("save registry: %w", err)
+                }</span>
+                <span class="cov1" title="1">fmt.Fprintln(cmd.OutOrStdout(), "All registrations released.")
+                return nil</span>
+        }
+
+        <span class="cov8" title="6">var key string
+        if len(args) == 1 </span><span class="cov7" title="5">{
+                // Check if argument is a port number.
+                if port, err := strconv.Atoi(args[0]); err == nil </span><span class="cov4" title="2">{
+                        key = findKeyByPort(reg, port)
+                        if key == "" </span><span class="cov1" title="1">{
+                                return fmt.Errorf("no registration found for port %d", port)
+                        }</span>
+                } else<span class="cov5" title="3"> {
+                        key = args[0]
+                }</span>
+        } else<span class="cov1" title="1"> {
+                // Default: use cwd-based key.
+                dir, err := os.Getwd()
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("getwd: %w", err)
+                }</span>
+                <span class="cov1" title="1">res, err := resolver.Resolve(dir)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("resolve key: %w", err)
+                }</span>
+                <span class="cov1" title="1">key = res.Key</span>
+        }
+
+        <span class="cov7" title="5">entry, ok := reg.Entries[key]
+        if !ok </span><span class="cov1" title="1">{
+                return fmt.Errorf("no registration found for %q", key)
+        }</span>
+
+        <span class="cov7" title="4">if !freeFlagForce &amp;&amp; !confirmFn(fmt.Sprintf("Release port %d for %q? [y/N] ", entry.Port, key)) </span><span class="cov1" title="1">{
+                fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+                return nil
+        }</span>
+
+        <span class="cov5" title="3">delete(reg.Entries, key)
+        if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("save registry: %w", err)
+        }</span>
+
+        <span class="cov5" title="3">fmt.Fprintf(cmd.OutOrStdout(), "Released port %d for %q.\n", entry.Port, key)
+        return nil</span>
+}
+
+func findKeyByPort(reg *registry.Registry, port int) string <span class="cov4" title="2">{
+        for k, e := range reg.Entries </span><span class="cov1" title="1">{
+                if e.Port == port </span><span class="cov1" title="1">{
+                        return k
+                }</span>
+        }
+        <span class="cov1" title="1">return ""</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package cmd
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/allocator"
+        "github.com/user01/devport/internal/detect"
+        "github.com/user01/devport/internal/registry"
+        "github.com/user01/devport/internal/resolver"
+)
+
+type getJSONOutput struct {
+        Port      int    `json:"port"`
+        Key       string `json:"key"`
+        Framework string `json:"framework"`
+        New       bool   `json:"new"`
+}
+
+var getCmd = &amp;cobra.Command{
+        Use:   "get",
+        Short: "Get (or allocate) the port for the current project",
+        RunE:  runGet,
+}
+
+var (
+        getFlagJSON     bool
+        getFlagRangeMin int
+        getFlagRangeMax int
+        getFlagFramework string
+)
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(getCmd)
+        getCmd.Flags().BoolVar(&amp;getFlagJSON, "json", false, "Output as JSON")
+        getCmd.Flags().IntVar(&amp;getFlagRangeMin, "range-min", 0, "Custom port range minimum")
+        getCmd.Flags().IntVar(&amp;getFlagRangeMax, "range-max", 0, "Custom port range maximum")
+        getCmd.Flags().StringVar(&amp;getFlagFramework, "framework", "", "Override framework detection")
+}</span>
+
+func runGet(cmd *cobra.Command, _ []string) error <span class="cov10" title="10">{
+        dir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("getwd: %w", err)
+        }</span>
+
+        <span class="cov10" title="10">home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="10">res, err := resolver.Resolve(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("resolve key: %w", err)
+        }</span>
+
+        <span class="cov10" title="10">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="10">framework := getFlagFramework
+        if framework == "" </span><span class="cov9" title="9">{
+                framework = detect.Detect(dir)
+        }</span>
+
+        <span class="cov10" title="10">isNew := reg.Entries[res.Key] == nil
+
+        port, err := allocator.Allocate(res.Key, framework, reg, allocator.Options{
+                RangeMin: getFlagRangeMin,
+                RangeMax: getFlagRangeMax,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Persist if new or update lastAccessedAt.
+        <span class="cov10" title="10">now := time.Now().UTC()
+        if isNew </span><span class="cov9" title="8">{
+                reg.Entries[res.Key] = &amp;registry.Entry{
+                        Port:           port,
+                        KeySource:      registry.KeySource(res.Source),
+                        DisplayName:    res.Name,
+                        ProjectPath:    dir,
+                        Framework:      framework,
+                        AllocatedAt:    now,
+                        LastAccessedAt: now,
+                }
+        }</span> else<span class="cov3" title="2"> {
+                reg.Entries[res.Key].LastAccessedAt = now
+        }</span>
+
+        <span class="cov10" title="10">if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("save registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="10">if getFlagJSON </span><span class="cov5" title="3">{
+                out := getJSONOutput{Port: port, Key: res.Key, Framework: framework, New: isNew}
+                data, _ := json.Marshal(out)
+                fmt.Fprintln(cmd.OutOrStdout(), string(data))
+                return nil
+        }</span>
+
+        <span class="cov8" title="7">fmt.Fprintln(cmd.OutOrStdout(), port)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package cmd
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/allocator"
+        "github.com/user01/devport/internal/detect"
+        "github.com/user01/devport/internal/registry"
+        "github.com/user01/devport/internal/resolver"
+)
+
+var initCmd = &amp;cobra.Command{
+        Use:   "init",
+        Short: "Set up devport for the current project",
+        RunE:  runInit,
+}
+
+var (
+        initFlagFramework string
+        initFlagRangeMin  int
+        initFlagRangeMax  int
+        initFlagYes       bool
+)
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(initCmd)
+        initCmd.Flags().StringVar(&amp;initFlagFramework, "framework", "", "Override framework detection")
+        initCmd.Flags().IntVar(&amp;initFlagRangeMin, "range-min", 0, "Custom port range minimum")
+        initCmd.Flags().IntVar(&amp;initFlagRangeMax, "range-max", 0, "Custom port range maximum")
+        initCmd.Flags().BoolVarP(&amp;initFlagYes, "yes", "y", false, "Accept all prompts automatically")
+}</span>
+
+func runInit(cmd *cobra.Command, _ []string) error <span class="cov10" title="7">{
+        dir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("getwd: %w", err)
+        }</span>
+
+        <span class="cov10" title="7">home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="7">res, err := resolver.Resolve(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("resolve key: %w", err)
+        }</span>
+
+        <span class="cov10" title="7">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="7">framework := initFlagFramework
+        if framework == "" </span><span class="cov9" title="6">{
+                framework = detect.Detect(dir)
+        }</span>
+
+        <span class="cov10" title="7">isNew := reg.Entries[res.Key] == nil
+
+        port, err := allocator.Allocate(res.Key, framework, reg, allocator.Options{
+                RangeMin: initFlagRangeMin,
+                RangeMax: initFlagRangeMax,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov10" title="7">now := time.Now().UTC()
+        if isNew </span><span class="cov10" title="7">{
+                reg.Entries[res.Key] = &amp;registry.Entry{
+                        Port:           port,
+                        KeySource:      registry.KeySource(res.Source),
+                        DisplayName:    res.Name,
+                        ProjectPath:    dir,
+                        Framework:      framework,
+                        AllocatedAt:    now,
+                        LastAccessedAt: now,
+                }
+        }</span> else<span class="cov0" title="0"> {
+                reg.Entries[res.Key].LastAccessedAt = now
+        }</span>
+
+        <span class="cov10" title="7">if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("save registry: %w", err)
+        }</span>
+
+        // Write env file.
+        <span class="cov10" title="7">cfg := detect.EnvConfigFor(framework, detect.EnvOptions{})
+        if err := detect.WriteEnvFile(dir, port, cfg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("write env file: %w", err)
+        }</span>
+
+        <span class="cov10" title="7">fmt.Fprintf(cmd.OutOrStdout(), "Framework : %s\n", frameworkLabel(framework))
+        fmt.Fprintf(cmd.OutOrStdout(), "Port      : %d\n", port)
+        fmt.Fprintf(cmd.OutOrStdout(), "Env file  : %s (%s=%d)\n", cfg.File, cfg.VarName, port)
+
+        // Offer to add predev script to package.json.
+        pkgPath := filepath.Join(dir, "package.json")
+        if _, err := os.Stat(pkgPath); err == nil </span><span class="cov10" title="7">{
+                do := initFlagYes || confirmFn(`Add "predev": "devport env" to package.json? [y/N] `)
+                if do </span><span class="cov9" title="6">{
+                        if err := addPredevScript(pkgPath); err != nil </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "Warning: could not update package.json: %v\n", err)
+                        }</span> else<span class="cov9" title="6"> {
+                                fmt.Fprintln(cmd.OutOrStdout(), `Added "predev": "devport env" to package.json.`)
+                        }</span>
+                }
+        }
+
+        // Offer to add .env.local to .gitignore.
+        <span class="cov10" title="7">if cfg.File == ".env.local" </span><span class="cov9" title="6">{
+                do := initFlagYes || confirmFn("Add .env.local to .gitignore? [y/N] ")
+                if do </span><span class="cov8" title="5">{
+                        if err := addToGitignore(dir, ".env.local"); err != nil </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "Warning: could not update .gitignore: %v\n", err)
+                        }</span> else<span class="cov8" title="5"> {
+                                fmt.Fprintln(cmd.OutOrStdout(), "Added .env.local to .gitignore.")
+                        }</span>
+                }
+        }
+
+        <span class="cov10" title="7">return nil</span>
+}
+
+func frameworkLabel(f string) string <span class="cov10" title="7">{
+        if f == "" </span><span class="cov7" title="4">{
+                return "(unknown)"
+        }</span>
+        <span class="cov6" title="3">return f</span>
+}
+
+// addPredevScript inserts or updates the "predev" script in package.json.
+func addPredevScript(pkgPath string) error <span class="cov9" title="6">{
+        data, err := os.ReadFile(pkgPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov9" title="6">var pkg map[string]json.RawMessage
+        if err := json.Unmarshal(data, &amp;pkg); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Ensure scripts section exists.
+        <span class="cov9" title="6">var scripts map[string]json.RawMessage
+        if raw, ok := pkg["scripts"]; ok </span><span class="cov0" title="0">{
+                if err := json.Unmarshal(raw, &amp;scripts); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        } else<span class="cov9" title="6"> {
+                scripts = make(map[string]json.RawMessage)
+        }</span>
+
+        <span class="cov9" title="6">scripts["predev"] = json.RawMessage(`"devport env"`)
+
+        encoded, err := json.Marshal(scripts)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov9" title="6">pkg["scripts"] = json.RawMessage(encoded)
+
+        out, err := json.MarshalIndent(pkg, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov9" title="6">return os.WriteFile(pkgPath, append(out, '\n'), 0644)</span>
+}
+
+// addToGitignore appends line to .gitignore if not already present.
+func addToGitignore(dir, line string) error <span class="cov8" title="5">{
+        path := filepath.Join(dir, ".gitignore")
+        data, err := os.ReadFile(path)
+        if err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="5">content := string(data)
+        for _, l := range strings.Split(content, "\n") </span><span class="cov8" title="5">{
+                if strings.TrimSpace(l) == line </span><span class="cov1" title="1">{
+                        return nil // already present
+                }</span>
+        }
+
+        <span class="cov7" title="4">if len(content) &gt; 0 &amp;&amp; !strings.HasSuffix(content, "\n") </span><span class="cov0" title="0">{
+                content += "\n"
+        }</span>
+        <span class="cov7" title="4">content += line + "\n"
+
+        return os.WriteFile(path, []byte(content), 0644)</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package cmd
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "sort"
+        "strconv"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/output"
+        "github.com/user01/devport/internal/registry"
+)
+
+var listCmd = &amp;cobra.Command{
+        Use:   "list",
+        Short: "List all registered projects and their ports",
+        RunE:  runList,
+}
+
+var (
+        listFlagJSON    bool
+        listFlagVerbose bool
+)
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(listCmd)
+        listCmd.Flags().BoolVar(&amp;listFlagJSON, "json", false, "Output as JSON")
+        listCmd.Flags().BoolVarP(&amp;listFlagVerbose, "verbose", "v", false, "Show additional columns")
+}</span>
+
+func runList(cmd *cobra.Command, _ []string) error <span class="cov10" title="5">{
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="5">if len(reg.Entries) == 0 </span><span class="cov1" title="1">{
+                fmt.Fprintln(cmd.OutOrStdout(), "No projects registered.")
+                return nil
+        }</span>
+
+        // Sort by port ascending.
+        <span class="cov8" title="4">type row struct {
+                key   string
+                entry *registry.Entry
+        }
+        rows := make([]row, 0, len(reg.Entries))
+        for k, e := range reg.Entries </span><span class="cov10" title="5">{
+                rows = append(rows, row{k, e})
+        }</span>
+        <span class="cov8" title="4">sort.Slice(rows, func(i, j int) bool </span><span class="cov1" title="1">{
+                return rows[i].entry.Port &lt; rows[j].entry.Port
+        }</span>)
+
+        <span class="cov8" title="4">if listFlagJSON </span><span class="cov1" title="1">{
+                type jsonEntry struct {
+                        Key         string `json:"key"`
+                        Port        int    `json:"port"`
+                        DisplayName string `json:"displayName"`
+                        Framework   string `json:"framework"`
+                        ProjectPath string `json:"projectPath"`
+                        KeySource   string `json:"keySource"`
+                        AllocatedAt string `json:"allocatedAt"`
+                }
+                out := make([]jsonEntry, len(rows))
+                for i, r := range rows </span><span class="cov1" title="1">{
+                        out[i] = jsonEntry{
+                                Key:         r.key,
+                                Port:        r.entry.Port,
+                                DisplayName: r.entry.DisplayName,
+                                Framework:   r.entry.Framework,
+                                ProjectPath: r.entry.ProjectPath,
+                                KeySource:   string(r.entry.KeySource),
+                                AllocatedAt: r.entry.AllocatedAt.String(),
+                        }
+                }</span>
+                <span class="cov1" title="1">data, _ := json.Marshal(out)
+                fmt.Fprintln(cmd.OutOrStdout(), string(data))
+                return nil</span>
+        }
+
+        <span class="cov7" title="3">p := output.NewPlain(cmd.OutOrStdout())
+
+        cols := []output.Column{
+                {Header: "PORT", MinWidth: 5},
+                {Header: "PROJECT", MinWidth: 20},
+                {Header: "FRAMEWORK", MinWidth: 10},
+        }
+        if listFlagVerbose </span><span class="cov1" title="1">{
+                cols = append(cols,
+                        output.Column{Header: "KEY_SOURCE", MinWidth: 12},
+                        output.Column{Header: "ALLOCATED_AT", MinWidth: 20},
+                )
+        }</span>
+
+        <span class="cov7" title="3">tbl := output.NewTable(p, cols)
+        for _, r := range rows </span><span class="cov8" title="4">{
+                vals := []string{
+                        strconv.Itoa(r.entry.Port),
+                        r.entry.DisplayName,
+                        r.entry.Framework,
+                }
+                if listFlagVerbose </span><span class="cov1" title="1">{
+                        vals = append(vals,
+                                string(r.entry.KeySource),
+                                r.entry.AllocatedAt.Format("2006-01-02 15:04:05"),
+                        )
+                }</span>
+                <span class="cov8" title="4">tbl.AddRow(vals...)</span>
+        }
+        <span class="cov7" title="3">tbl.Render()
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package cmd
+
+import (
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/allocator"
+        "github.com/user01/devport/internal/detect"
+        "github.com/user01/devport/internal/registry"
+        "github.com/user01/devport/internal/resolver"
+)
+
+var resetCmd = &amp;cobra.Command{
+        Use:   "reset [key]",
+        Short: "Force re-allocation of the port for a project",
+        Args:  cobra.MaximumNArgs(1),
+        RunE:  runReset,
+}
+
+var resetFlagForce bool
+
+func init() <span class="cov1" title="1">{
+        rootCmd.AddCommand(resetCmd)
+        resetCmd.Flags().BoolVar(&amp;resetFlagForce, "force", false, "Skip confirmation prompt")
+}</span>
+
+func runReset(cmd *cobra.Command, args []string) error <span class="cov10" title="4">{
+        dir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("getwd: %w", err)
+        }</span>
+
+        <span class="cov10" title="4">home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("homedir: %w", err)
+        }</span>
+
+        <span class="cov10" title="4">reg, err := registry.Load(home)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("load registry: %w", err)
+        }</span>
+
+        <span class="cov10" title="4">var key string
+        if len(args) == 1 </span><span class="cov5" title="2">{
+                key = args[0]
+        }</span> else<span class="cov5" title="2"> {
+                res, err := resolver.Resolve(dir)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("resolve key: %w", err)
+                }</span>
+                <span class="cov5" title="2">key = res.Key</span>
+        }
+
+        <span class="cov10" title="4">oldEntry, exists := reg.Entries[key]
+        if exists </span><span class="cov8" title="3">{
+                if !resetFlagForce &amp;&amp; !confirmFn(fmt.Sprintf("Reset port %d for %q? [y/N] ", oldEntry.Port, key)) </span><span class="cov1" title="1">{
+                        fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+                        return nil
+                }</span>
+                <span class="cov5" title="2">delete(reg.Entries, key)</span>
+        }
+
+        <span class="cov8" title="3">framework := detect.Detect(dir)
+        res, err := resolver.Resolve(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("resolve key: %w", err)
+        }</span>
+        // Use the resolved key if no args were given.
+        <span class="cov8" title="3">if len(args) == 0 </span><span class="cov5" title="2">{
+                key = res.Key
+        }</span>
+
+        <span class="cov8" title="3">port, err := allocator.Allocate(key, framework, reg, allocator.Options{})
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="3">now := time.Now().UTC()
+        allocatedAt := now
+        if exists </span><span class="cov5" title="2">{
+                allocatedAt = oldEntry.AllocatedAt
+        }</span>
+
+        <span class="cov8" title="3">reg.Entries[key] = &amp;registry.Entry{
+                Port:           port,
+                KeySource:      registry.KeySource(res.Source),
+                DisplayName:    res.Name,
+                ProjectPath:    dir,
+                Framework:      framework,
+                AllocatedAt:    allocatedAt,
+                LastAccessedAt: now,
+        }
+
+        if err := registry.Save(home, reg); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("save registry: %w", err)
+        }</span>
+
+        <span class="cov8" title="3">fmt.Fprintf(cmd.OutOrStdout(), "Reset: assigned port %d for %q.\n", port, key)
+
+        // Offer to update the env file.
+        cfg := detect.EnvConfigFor(framework, detect.EnvOptions{})
+        do := resetFlagForce || confirmFn(fmt.Sprintf("Update %s with %s=%d? [y/N] ", cfg.File, cfg.VarName, port))
+        if do </span><span class="cov8" title="3">{
+                if err := detect.WriteEnvFile(dir, port, cfg); err != nil </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "Warning: could not update env file: %v\n", err)
+                }</span> else<span class="cov8" title="3"> {
+                        fmt.Fprintf(cmd.OutOrStdout(), "Updated %s.\n", cfg.File)
+                }</span>
+        }
+
+        <span class="cov8" title="3">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package cmd
+
+import (
+        "os"
+
+        "github.com/spf13/cobra"
+        "github.com/user01/devport/internal/output"
+)
+
+var version = "0.1.0"
+
+// Out is the global printer used by all commands. Tests can replace it.
+var Out = output.NewPlain(os.Stdout)
+
+var rootCmd = &amp;cobra.Command{
+        Use:     "devport",
+        Short:   "Conflict-free port allocation for local development",
+        Version: version,
+}
+
+// Execute runs the CLI.
+func Execute() <span class="cov0" title="0">{
+        if err := rootCmd.Execute(); err != nil </span><span class="cov0" title="0">{
+                os.Exit(1)
+        }</span>
+}
+
+func init() <span class="cov8" title="1">{
+        rootCmd.SetOut(os.Stdout)
+        rootCmd.SetErr(os.Stderr)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

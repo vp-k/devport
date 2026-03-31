@@ -93,18 +93,10 @@ func lockFilePath(homeDir string) string {
 	return filepath.Join(homeDir, registryFileName+".lock")
 }
 
-// writeRegistry atomically writes the registry to homeDir using a tmp→rename
-// pattern protected by a separate lock file.
-func writeRegistry(homeDir string, reg *Registry) error {
+// writeRegistryBody performs the disk write. The caller must already hold the
+// write lock; this function does not acquire it.
+func writeRegistryBody(homeDir string, reg *Registry) error {
 	path := registryFilePath(homeDir)
-
-	// Lock a separate sentinel file so the registry file itself stays unlocked
-	// and can be replaced atomically via rename on all platforms including Windows.
-	release, err := acquireLock(lockFilePath(homeDir))
-	if err != nil {
-		return fmt.Errorf("acquiring lock: %w", err)
-	}
-	defer release() //nolint:errcheck
 
 	reg.Meta.UpdatedAt = time.Now().UTC()
 
@@ -124,6 +116,44 @@ func writeRegistry(homeDir string, reg *Registry) error {
 	}
 
 	return nil
+}
+
+// writeRegistry atomically writes the registry to homeDir using a tmp→rename
+// pattern protected by a separate lock file.
+func writeRegistry(homeDir string, reg *Registry) error {
+	// Lock a separate sentinel file so the registry file itself stays unlocked
+	// and can be replaced atomically via rename on all platforms including Windows.
+	release, err := acquireLock(lockFilePath(homeDir))
+	if err != nil {
+		return fmt.Errorf("acquiring lock: %w", err)
+	}
+	defer release() //nolint:errcheck
+
+	return writeRegistryBody(homeDir, reg)
+}
+
+// Transaction holds the write lock for the entire load → fn → save sequence,
+// preventing concurrent CLI invocations from observing stale registry state
+// during a read-modify-write cycle (e.g. port allocation).
+// fn receives the loaded registry and may modify it in-place; a non-nil error
+// returned by fn aborts the transaction without saving.
+func Transaction(homeDir string, fn func(*Registry) error) error {
+	release, err := acquireLock(lockFilePath(homeDir))
+	if err != nil {
+		return fmt.Errorf("acquiring lock: %w", err)
+	}
+	defer release() //nolint:errcheck
+
+	reg, err := loadRegistry(homeDir)
+	if err != nil {
+		return err
+	}
+
+	if err := fn(reg); err != nil {
+		return err
+	}
+
+	return writeRegistryBody(homeDir, reg)
 }
 
 // Load is the exported entry point for loading the registry.

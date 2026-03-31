@@ -1,0 +1,21 @@
+mode: set
+github.com/user01/devport/internal/detect/framework.go:11.32,22.37 2 1
+github.com/user01/devport/internal/detect/framework.go:22.37,23.33 1 1
+github.com/user01/devport/internal/detect/framework.go:23.33,24.41 1 1
+github.com/user01/devport/internal/detect/framework.go:24.41,26.5 1 1
+github.com/user01/devport/internal/detect/framework.go:31.2,32.17 2 1
+github.com/user01/devport/internal/detect/framework.go:32.17,34.3 1 1
+github.com/user01/devport/internal/detect/framework.go:37.2,48.34 2 1
+github.com/user01/devport/internal/detect/framework.go:48.34,49.35 1 1
+github.com/user01/devport/internal/detect/framework.go:49.35,51.4 1 1
+github.com/user01/devport/internal/detect/framework.go:54.2,54.11 1 1
+github.com/user01/devport/internal/detect/framework.go:59.53,61.16 2 1
+github.com/user01/devport/internal/detect/framework.go:61.16,63.3 1 1
+github.com/user01/devport/internal/detect/framework.go:65.2,69.51 2 1
+github.com/user01/devport/internal/detect/framework.go:69.51,71.3 1 1
+github.com/user01/devport/internal/detect/framework.go:73.2,74.37 2 1
+github.com/user01/devport/internal/detect/framework.go:74.37,76.3 1 1
+github.com/user01/devport/internal/detect/framework.go:77.2,77.40 1 1
+github.com/user01/devport/internal/detect/framework.go:77.40,79.3 1 1
+github.com/user01/devport/internal/detect/framework.go:80.2,80.15 1 1
+github.com/user01/devport/internal/detect/framework.go:83.35,86.2 2 1

@@ -371,3 +371,68 @@ func TestLoadSaveExported(t *testing.T) {
 		t.Error("expected test-key entry with port 3333 after round-trip")
 	}
 }
+
+// --- Transaction ---
+
+func TestTransaction(t *testing.T) {
+	tmpDir, _ := withTempHome(t)
+
+	// Successful transaction modifies the registry.
+	err := Transaction(tmpDir, func(reg *Registry) error {
+		reg.Entries["tx-key"] = &Entry{Port: 4444}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Transaction: %v", err)
+	}
+	loaded, _ := Load(tmpDir)
+	if loaded.Entries["tx-key"] == nil || loaded.Entries["tx-key"].Port != 4444 {
+		t.Error("expected tx-key with port 4444 after transaction")
+	}
+}
+
+func TestTransactionFnError(t *testing.T) {
+	tmpDir, _ := withTempHome(t)
+
+	sentinel := errors.New("fn error")
+	err := Transaction(tmpDir, func(reg *Registry) error {
+		reg.Entries["should-not-persist"] = &Entry{Port: 5555}
+		return sentinel
+	})
+	if err != sentinel {
+		t.Fatalf("expected sentinel error, got %v", err)
+	}
+	// The registry must NOT be saved when fn returns an error.
+	loaded, _ := Load(tmpDir)
+	if loaded.Entries["should-not-persist"] != nil {
+		t.Error("entry must not be persisted when fn returns error")
+	}
+}
+
+func TestTransactionLockError(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Make the lock file a directory so os.OpenFile fails.
+	lockPath := filepath.Join(tmpDir, ".devports.json.lock")
+	if err := os.Mkdir(lockPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Transaction(tmpDir, func(_ *Registry) error { return nil })
+	if err == nil {
+		t.Fatal("expected lock error, got nil")
+	}
+}
+
+func TestTransactionLoadError(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Make the registry file a directory so os.ReadFile returns a non-IsNotExist error.
+	regPath := filepath.Join(tmpDir, ".devports.json")
+	if err := os.Mkdir(regPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Transaction(tmpDir, func(_ *Registry) error { return nil })
+	if err == nil {
+		t.Fatal("expected load error, got nil")
+	}
+}

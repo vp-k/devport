@@ -45,40 +45,37 @@ func runEnv(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("resolve key: %w", err)
 	}
 
-	reg, err := cmdRegistryLoad(home)
-	if err != nil {
-		return fmt.Errorf("load registry: %w", err)
-	}
-
 	framework := envFlagFramework
 	if framework == "" {
 		framework = detect.Detect(dir)
 	}
 
-	isNew := reg.Entries[res.Key] == nil
+	var port int
 
-	port, err := cmdAllocate(res.Key, framework, reg, allocator.Options{})
-	if err != nil {
-		return err
-	}
-
-	now := time.Now().UTC()
-	if isNew {
-		reg.Entries[res.Key] = &registry.Entry{
-			Port:           port,
-			KeySource:      registry.KeySource(res.Source),
-			DisplayName:    res.Name,
-			ProjectPath:    dir,
-			Framework:      framework,
-			AllocatedAt:    now,
-			LastAccessedAt: now,
+	if err := cmdTransaction(home, func(reg *registry.Registry) error {
+		isNew := reg.Entries[res.Key] == nil
+		var allocErr error
+		port, allocErr = cmdAllocate(res.Key, framework, reg, allocator.Options{})
+		if allocErr != nil {
+			return allocErr
 		}
-	} else {
-		reg.Entries[res.Key].LastAccessedAt = now
-	}
-
-	if err := cmdRegistrySave(home, reg); err != nil {
-		return fmt.Errorf("save registry: %w", err)
+		now := time.Now().UTC()
+		if isNew {
+			reg.Entries[res.Key] = &registry.Entry{
+				Port:           port,
+				KeySource:      registry.KeySource(res.Source),
+				DisplayName:    res.Name,
+				ProjectPath:    dir,
+				Framework:      framework,
+				AllocatedAt:    now,
+				LastAccessedAt: now,
+			}
+		} else {
+			reg.Entries[res.Key].LastAccessedAt = now
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	cfg := detect.EnvConfigFor(framework, detect.EnvOptions{

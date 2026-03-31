@@ -35,11 +35,7 @@ func runReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("homedir: %w", err)
 	}
 
-	reg, err := cmdRegistryLoad(home)
-	if err != nil {
-		return fmt.Errorf("load registry: %w", err)
-	}
-
+	// Determine the target key.
 	var key string
 	if len(args) == 1 {
 		key = args[0]
@@ -51,57 +47,92 @@ func runReset(cmd *cobra.Command, args []string) error {
 		key = res.Key
 	}
 
-	oldEntry, exists := reg.Entries[key]
-	if exists {
-		if !resetFlagForce && !confirmFn(fmt.Sprintf("Reset port %d for %q? [y/N] ", oldEntry.Port, key)) {
+	// Load once outside the transaction to display port in the confirmation prompt.
+	regSnap, err := cmdRegistryLoad(home)
+	if err != nil {
+		return fmt.Errorf("load registry: %w", err)
+	}
+
+	if snap := regSnap.Entries[key]; snap != nil {
+		if !resetFlagForce && !confirmFn(fmt.Sprintf("Reset port %d for %q? [y/N] ", snap.Port, key)) {
 			fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 			return nil
 		}
-		delete(reg.Entries, key)
 	}
 
-	framework := detect.Detect(dir)
-	res, err := cmdResolve(dir)
-	if err != nil {
-		return fmt.Errorf("resolve key (2): %w", err)
-	}
-	// Use the resolved key if no args were given.
-	if len(args) == 0 {
-		key = res.Key
-	}
+	// Capture values set inside the transaction for post-transaction output.
+	var port int
+	var projectPath = dir
+	var framework string
 
-	port, err := cmdAllocate(key, framework, reg, allocator.Options{})
-	if err != nil {
+	if err := cmdTransaction(home, func(reg *registry.Registry) error {
+		oldE := reg.Entries[key]
+
+		if oldE != nil {
+			// Use existing entry's metadata so keyed resets don't inherit cwd.
+			framework = oldE.Framework
+			projectPath = oldE.ProjectPath
+
+			// Temporarily reserve the old port so the allocator cannot hand it
+			// back immediately (P2: reset must produce a different port).
+			reg.Reserved = append(reg.Reserved, oldE.Port)
+			delete(reg.Entries, key)
+		} else {
+			// New key: resolve framework and metadata from cwd.
+			framework = detect.Detect(dir)
+		}
+
+		var allocErr error
+		port, allocErr = cmdAllocate(key, framework, reg, allocator.Options{})
+
+		// Always clean up the temporary reservation regardless of outcome.
+		if oldE != nil {
+			reg.Reserved = removeInt(reg.Reserved, oldE.Port)
+		}
+		if allocErr != nil {
+			return allocErr
+		}
+
+		now := time.Now().UTC()
+		allocatedAt := now
+		var keySource registry.KeySource
+		var displayName string
+
+		if oldE != nil {
+			allocatedAt = oldE.AllocatedAt
+			keySource = oldE.KeySource
+			displayName = oldE.DisplayName
+		} else {
+			res, resolveErr := cmdResolve(dir)
+			if resolveErr != nil {
+				return fmt.Errorf("resolve key: %w", resolveErr)
+			}
+			keySource = registry.KeySource(res.Source)
+			displayName = res.Name
+			projectPath = dir
+		}
+
+		reg.Entries[key] = &registry.Entry{
+			Port:           port,
+			KeySource:      keySource,
+			DisplayName:    displayName,
+			ProjectPath:    projectPath,
+			Framework:      framework,
+			AllocatedAt:    allocatedAt,
+			LastAccessedAt: now,
+		}
+		return nil
+	}); err != nil {
 		return err
-	}
-
-	now := time.Now().UTC()
-	allocatedAt := now
-	if exists {
-		allocatedAt = oldEntry.AllocatedAt
-	}
-
-	reg.Entries[key] = &registry.Entry{
-		Port:           port,
-		KeySource:      registry.KeySource(res.Source),
-		DisplayName:    res.Name,
-		ProjectPath:    dir,
-		Framework:      framework,
-		AllocatedAt:    allocatedAt,
-		LastAccessedAt: now,
-	}
-
-	if err := cmdRegistrySave(home, reg); err != nil {
-		return fmt.Errorf("save registry: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Reset: assigned port %d for %q.\n", port, key)
 
-	// Offer to update the env file.
+	// Offer to update the env file in the project's own directory.
 	cfg := detect.EnvConfigFor(framework, detect.EnvOptions{})
 	do := resetFlagForce || confirmFn(fmt.Sprintf("Update %s with %s=%d? [y/N] ", cfg.File, cfg.VarName, port))
 	if do {
-		if err := cmdWriteEnvFile(dir, port, cfg); err != nil {
+		if err := cmdWriteEnvFile(projectPath, port, cfg); err != nil {
 			fmt.Fprintf(cmd.OutOrStdout(), "Warning: could not update env file: %v\n", err)
 		} else {
 			fmt.Fprintf(cmd.OutOrStdout(), "Updated %s.\n", cfg.File)
@@ -109,4 +140,14 @@ func runReset(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// removeInt returns a copy of s with the first occurrence of v removed.
+func removeInt(s []int, v int) []int {
+	for i, x := range s {
+		if x == v {
+			return append(s[:i:i], s[i+1:]...)
+		}
+	}
+	return s
 }

@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>detect: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/user01/devport/internal/detect/envwriter.go (91.2%)</option>
+				
+				<option value="file1">github.com/user01/devport/internal/detect/framework.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package detect
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+// EnvOptions allows callers to override defaults returned by EnvConfigFor.
+type EnvOptions struct {
+        VarName string // override the env variable name (e.g. "MY_PORT")
+        Output  string // override the output file path (e.g. ".env.custom")
+}
+
+// EnvConfig holds the resolved configuration for writing a port env var.
+type EnvConfig struct {
+        File    string // relative path of the env file (e.g. ".env.local")
+        VarName string // env variable name (e.g. "PORT" or "VITE_PORT")
+}
+
+// frameworkEnvDefaults maps framework name → (file, varName).
+var frameworkEnvDefaults = map[string][2]string{
+        "next":    {".env.local", "PORT"},
+        "vite":    {".env.local", "VITE_PORT"},
+        "express": {".env", "PORT"},
+        "angular": {".env.local", "PORT"},
+        "nest":    {".env", "PORT"},
+        "cra":     {".env.local", "PORT"},
+}
+
+// EnvConfigFor returns the EnvConfig for the given framework, applying any
+// overrides from opts. Unknown or empty frameworks fall back to .env.local/PORT.
+func EnvConfigFor(framework string, opts EnvOptions) EnvConfig <span class="cov10" title="9">{
+        defaults, ok := frameworkEnvDefaults[framework]
+        if !ok </span><span class="cov1" title="1">{
+                defaults = [2]string{".env.local", "PORT"}
+        }</span>
+
+        <span class="cov10" title="9">cfg := EnvConfig{
+                File:    defaults[0],
+                VarName: defaults[1],
+        }
+
+        if opts.Output != "" </span><span class="cov1" title="1">{
+                cfg.File = opts.Output
+        }</span>
+        <span class="cov10" title="9">if opts.VarName != "" </span><span class="cov1" title="1">{
+                cfg.VarName = opts.VarName
+        }</span>
+
+        <span class="cov10" title="9">return cfg</span>
+}
+
+// WriteEnvFile writes PORT=&lt;port&gt; into the env file described by cfg inside
+// dir. If the file already contains a line for cfg.VarName it is replaced in
+// place; otherwise the assignment is appended. Other lines (including blank
+// lines and comments) are preserved. Parent directories are created as needed.
+func WriteEnvFile(dir string, port int, cfg EnvConfig) error <span class="cov7" title="5">{
+        fullPath := filepath.Join(dir, filepath.FromSlash(cfg.File))
+
+        if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create parent dirs: %w", err)
+        }</span>
+
+        <span class="cov7" title="5">assignment := fmt.Sprintf("%s=%d", cfg.VarName, port)
+        prefix := cfg.VarName + "="
+
+        data, err := os.ReadFile(fullPath)
+        if err != nil </span><span class="cov3" title="2">{
+                if !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return fmt.Errorf("read env file: %w", err)
+                }</span>
+                // File does not exist — create it with just the assignment.
+                <span class="cov3" title="2">return os.WriteFile(fullPath, []byte(assignment+"\n"), 0644)</span>
+        }
+
+        <span class="cov5" title="3">lines := strings.Split(string(data), "\n")
+        replaced := false
+        for i, line := range lines </span><span class="cov10" title="9">{
+                if strings.HasPrefix(line, prefix) </span><span class="cov3" title="2">{
+                        lines[i] = assignment
+                        replaced = true
+                        break</span>
+                }
+        }
+
+        <span class="cov5" title="3">var out string
+        if replaced </span><span class="cov3" title="2">{
+                out = strings.Join(lines, "\n")
+        }</span> else<span class="cov1" title="1"> {
+                // Append: ensure there is a trailing newline before appending.
+                content := string(data)
+                if len(content) &gt; 0 &amp;&amp; !strings.HasSuffix(content, "\n") </span><span class="cov0" title="0">{
+                        content += "\n"
+                }</span>
+                <span class="cov1" title="1">out = content + assignment + "\n"</span>
+        }
+
+        <span class="cov5" title="3">return os.WriteFile(fullPath, []byte(out), 0644)</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package detect
+
+import (
+        "encoding/json"
+        "os"
+        "path/filepath"
+)
+
+// Detect returns the framework name for the project in dir, or "" if unknown.
+// Detection priority: config files first, then package.json dependencies.
+func Detect(dir string) string <span class="cov6" title="18">{
+        // --- Config file detection (highest priority) ---
+        configChecks := []struct {
+                files     []string
+                framework string
+        }{
+                {[]string{"next.config.js", "next.config.ts", "next.config.mjs"}, "next"},
+                {[]string{"vite.config.js", "vite.config.ts", "vite.config.mjs"}, "vite"},
+                {[]string{"angular.json"}, "angular"},
+        }
+
+        for _, check := range configChecks </span><span class="cov8" title="44">{
+                for _, f := range check.files </span><span class="cov10" title="103">{
+                        if fileExists(filepath.Join(dir, f)) </span><span class="cov5" title="8">{
+                                return check.framework
+                        }</span>
+                }
+        }
+
+        // --- package.json dependency detection ---
+        <span class="cov5" title="10">deps := readDependencies(dir)
+        if deps == nil </span><span class="cov2" title="2">{
+                return ""
+        }</span>
+
+        // Order matters: more specific first.
+        <span class="cov5" title="8">depChecks := []struct {
+                pkg       string
+                framework string
+        }{
+                {"@nestjs/core", "nest"},
+                {"react-scripts", "cra"},
+                {"express", "express"},
+                {"next", "next"},
+                {"vite", "vite"},
+        }
+
+        for _, check := range depChecks </span><span class="cov7" title="26">{
+                if _, ok := deps[check.pkg]; ok </span><span class="cov4" title="7">{
+                        return check.framework
+                }</span>
+        }
+
+        <span class="cov1" title="1">return ""</span>
+}
+
+// readDependencies returns the merged dependencies+devDependencies map from
+// package.json, or nil if the file cannot be read or parsed.
+func readDependencies(dir string) map[string]string <span class="cov5" title="10">{
+        data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+        if err != nil </span><span class="cov1" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov5" title="9">var pkg struct {
+                Dependencies    map[string]string `json:"dependencies"`
+                DevDependencies map[string]string `json:"devDependencies"`
+        }
+        if err := json.Unmarshal(data, &amp;pkg); err != nil </span><span class="cov1" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov5" title="8">merged := make(map[string]string)
+        for k, v := range pkg.Dependencies </span><span class="cov5" title="8">{
+                merged[k] = v
+        }</span>
+        <span class="cov5" title="8">for k, v := range pkg.DevDependencies </span><span class="cov1" title="1">{
+                merged[k] = v
+        }</span>
+        <span class="cov5" title="8">return merged</span>
+}
+
+func fileExists(path string) bool <span class="cov10" title="103">{
+        _, err := os.Stat(path)
+        return err == nil
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -50,8 +50,10 @@ func runFree(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 			return nil
 		}
-		reg.Entries = make(map[string]*registry.Entry)
-		if err := cmdRegistrySave(home, reg); err != nil {
+		if err := cmdTransaction(home, func(reg *registry.Registry) error {
+			reg.Entries = make(map[string]*registry.Entry)
+			return nil
+		}); err != nil {
 			return fmt.Errorf("save registry: %w", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), "All registrations released.")
@@ -92,12 +94,15 @@ func runFree(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	delete(reg.Entries, key)
-	if err := cmdRegistrySave(home, reg); err != nil {
+	portNum := entry.Port
+	if err := cmdTransaction(home, func(reg *registry.Registry) error {
+		delete(reg.Entries, key)
+		return nil
+	}); err != nil {
 		return fmt.Errorf("save registry: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Released port %d for %q.\n", entry.Port, key)
+	fmt.Fprintf(cmd.OutOrStdout(), "Released port %d for %q.\n", portNum, key)
 	return nil
 }
 

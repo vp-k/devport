@@ -58,12 +58,12 @@ func injectRegistryLoad(t *testing.T) {
 	t.Cleanup(func() { cmdRegistryLoad = orig })
 }
 
-// injectRegistrySave makes cmdRegistrySave return an error.
-func injectRegistrySave(t *testing.T) {
+// injectTransaction makes cmdTransaction return an error without executing fn.
+func injectTransaction(t *testing.T) {
 	t.Helper()
-	orig := cmdRegistrySave
-	cmdRegistrySave = func(_ string, _ *registry.Registry) error { return errFake }
-	t.Cleanup(func() { cmdRegistrySave = orig })
+	orig := cmdTransaction
+	cmdTransaction = func(_ string, _ func(*registry.Registry) error) error { return errFake }
+	t.Cleanup(func() { cmdTransaction = orig })
 }
 
 // injectWriteEnvFile makes cmdWriteEnvFile return an error.
@@ -416,7 +416,7 @@ func TestResetRegistrySaveError(t *testing.T) {
 	origWd, _ := os.Getwd()
 	os.Chdir(dir)
 	defer os.Chdir(origWd)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, resetCmd, "--force")
 	if err == nil {
@@ -461,20 +461,6 @@ func TestGetResolveError(t *testing.T) {
 	}
 }
 
-func TestGetRegistryLoadInjectedError(t *testing.T) {
-	cleanupGetFlags(t)
-	newTestHome(t)
-	dir := newTestProjectWithPackageJSON(t, "load-err-get-app2")
-	origWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(origWd)
-	injectRegistryLoad(t)
-
-	_, err := runCmd(t, getCmd)
-	if err == nil {
-		t.Fatal("expected error from registry load, got nil")
-	}
-}
 
 func TestGetRegistrySaveError(t *testing.T) {
 	cleanupGetFlags(t)
@@ -483,7 +469,7 @@ func TestGetRegistrySaveError(t *testing.T) {
 	origWd, _ := os.Getwd()
 	os.Chdir(dir)
 	defer os.Chdir(origWd)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, getCmd)
 	if err == nil {
@@ -523,20 +509,6 @@ func TestEnvResolveError(t *testing.T) {
 	}
 }
 
-func TestEnvRegistryLoadError(t *testing.T) {
-	cleanupEnvFlags(t)
-	newTestHome(t)
-	dir := newTestProjectWithPackageJSON(t, "load-err-env-app")
-	origWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(origWd)
-	injectRegistryLoad(t)
-
-	_, err := runCmd(t, envCmd)
-	if err == nil {
-		t.Fatal("expected error from registry load, got nil")
-	}
-}
 
 func TestEnvRegistrySaveError(t *testing.T) {
 	cleanupEnvFlags(t)
@@ -545,7 +517,7 @@ func TestEnvRegistrySaveError(t *testing.T) {
 	origWd, _ := os.Getwd()
 	os.Chdir(dir)
 	defer os.Chdir(origWd)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, envCmd)
 	if err == nil {
@@ -600,7 +572,7 @@ func TestFreeRegistrySaveError(t *testing.T) {
 	cleanupFreeFlags(t)
 	homeDir := newTestHome(t)
 	seedRegistry(t, homeDir, "save-err-free-app", 3999)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, freeCmd, "--force", "save-err-free-app")
 	if err == nil {
@@ -612,7 +584,7 @@ func TestFreeAllRegistrySaveError(t *testing.T) {
 	cleanupFreeFlags(t)
 	homeDir := newTestHome(t)
 	seedRegistry(t, homeDir, "all-save-err-app", 3998)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, freeCmd, "--all", "--force")
 	if err == nil {
@@ -652,20 +624,6 @@ func TestInitResolveError(t *testing.T) {
 	}
 }
 
-func TestInitRegistryLoadError(t *testing.T) {
-	cleanupInitFlags(t)
-	newTestHome(t)
-	dir := newTestProjectWithPackageJSON(t, "load-err-init-app")
-	origWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(origWd)
-	injectRegistryLoad(t)
-
-	_, err := runCmd(t, initCmd)
-	if err == nil {
-		t.Fatal("expected error from registry load, got nil")
-	}
-}
 
 func TestInitRegistrySaveError(t *testing.T) {
 	cleanupInitFlags(t)
@@ -674,7 +632,7 @@ func TestInitRegistrySaveError(t *testing.T) {
 	origWd, _ := os.Getwd()
 	os.Chdir(dir)
 	defer os.Chdir(origWd)
-	injectRegistrySave(t)
+	injectTransaction(t)
 
 	_, err := runCmd(t, initCmd)
 	if err == nil {
@@ -759,21 +717,21 @@ func TestInitAddGitignoreWarning(t *testing.T) {
 
 func TestResetSecondResolveError(t *testing.T) {
 	cleanupResetFlags(t)
-	homeDir := newTestHome(t)
-	seedRegistry(t, homeDir, "second-resolve-err-app", 3800)
+	newTestHome(t) // empty registry — key does not exist
 	dir := newTestProject(t)
 	origWd, _ := os.Getwd()
 	os.Chdir(dir)
 	defer os.Chdir(origWd)
 	injectResolve(t)
 
-	// Passing an explicit key skips the first cmdResolve call (else branch),
-	// so only the unconditional second cmdResolve will fail.
-	_, err := runCmd(t, resetCmd, "--force", "second-resolve-err-app")
+	// Passing an explicit key that is NOT in the registry triggers the
+	// else-branch inside the transaction (oldE == nil), which calls
+	// cmdResolve(dir) to obtain metadata — and that call fails here.
+	_, err := runCmd(t, resetCmd, "--force", "nonexistent-key-for-resolve-err")
 	if err == nil {
 		t.Fatal("expected error from second resolve, got nil")
 	}
-	if !strings.Contains(err.Error(), "resolve key (2)") {
+	if !strings.Contains(err.Error(), "resolve key") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -816,6 +774,31 @@ func TestExecuteErrorPath(t *testing.T) {
 
 	if *exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", *exitCode)
+	}
+}
+
+// ---- list: empty registry with --json flag ----
+
+func TestListEmptyJSON(t *testing.T) {
+	cleanupListFlags(t)
+	newTestHome(t) // empty registry
+
+	out, err := runCmd(t, listCmd, "--json")
+	if err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	if strings.TrimSpace(out) != "[]" {
+		t.Errorf("expected [], got %q", out)
+	}
+}
+
+// ---- removeInt: value not in slice ----
+
+func TestRemoveIntNotFound(t *testing.T) {
+	s := []int{1, 2, 3}
+	got := removeInt(s, 99) // 99 is not in s
+	if len(got) != 3 {
+		t.Errorf("expected slice length 3, got %d", len(got))
 	}
 }
 
