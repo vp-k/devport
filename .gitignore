@@ -15,6 +15,9 @@
 # npm packaging artifacts
 npm/platforms/*/bin/
 
+# Temp
+.tmp/
+
 # OS
 .DS_Store
 Thumbs.db
