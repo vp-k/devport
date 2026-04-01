@@ -17,6 +17,7 @@ npm/platforms/*/bin/
 
 # Temp
 .tmp/
+dist/
 
 # OS
 .DS_Store
