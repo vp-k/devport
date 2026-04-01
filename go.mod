@@ -1,4 +1,4 @@
-module github.com/user01/devport
+module github.com/vp-k/devport
 
 go 1.25.5
 

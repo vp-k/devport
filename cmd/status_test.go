@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 func cleanupStatusFlags(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 func cleanupResetFlags(t *testing.T) {

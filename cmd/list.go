@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"github.com/user01/devport/internal/output"
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/output"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 var listCmd = &cobra.Command{

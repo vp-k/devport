@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/user01/devport/internal/allocator"
-	"github.com/user01/devport/internal/detect"
+	"github.com/vp-k/devport/internal/allocator"
+	"github.com/vp-k/devport/internal/detect"
 )
 
 var statusCmd = &cobra.Command{

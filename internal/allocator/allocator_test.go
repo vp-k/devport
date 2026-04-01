@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 func emptyRegistry() *registry.Registry {

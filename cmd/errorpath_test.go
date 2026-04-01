@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/user01/devport/internal/allocator"
-	"github.com/user01/devport/internal/detect"
-	"github.com/user01/devport/internal/registry"
-	"github.com/user01/devport/internal/resolver"
+	"github.com/vp-k/devport/internal/allocator"
+	"github.com/vp-k/devport/internal/detect"
+	"github.com/vp-k/devport/internal/registry"
+	"github.com/vp-k/devport/internal/resolver"
 )
 
 var errFake = errors.New("injected error")

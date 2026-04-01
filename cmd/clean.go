@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 var cleanCmd = &cobra.Command{

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 func cleanupDoctorFlags(t *testing.T) {

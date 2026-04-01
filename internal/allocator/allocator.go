@@ -3,7 +3,7 @@ package allocator
 import (
 	"fmt"
 
-	"github.com/user01/devport/internal/registry"
+	"github.com/vp-k/devport/internal/registry"
 )
 
 // Options controls port allocation behaviour.

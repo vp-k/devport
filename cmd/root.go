@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/user01/devport/internal/output"
+	"github.com/vp-k/devport/internal/output"
 )
 
 var version = "0.1.0"

@@ -104,7 +104,7 @@ func stageBinary(root, version string, target target) error {
 	}
 
 	outputPath := filepath.Join(binDir, target.binaryName)
-	ldflags := fmt.Sprintf("-s -w -X github.com/user01/devport/cmd.version=%s", version)
+	ldflags := fmt.Sprintf("-s -w -X github.com/vp-k/devport/cmd.version=%s", version)
 	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, ".")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(),
