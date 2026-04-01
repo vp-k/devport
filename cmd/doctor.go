@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 	"github.com/user01/devport/internal/allocator"
@@ -88,30 +89,18 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	// --- Check 5: duplicate ports ---
-	portKeys := make(map[int][]string)
-	for key, entry := range reg.Entries {
-		portKeys[entry.Port] = append(portKeys[entry.Port], key)
-	}
-	var duplicates [][2]string
-	for port, keys := range portKeys {
-		if len(keys) > 1 {
-			// Keep most recently allocated, mark others for removal.
-			for i := 1; i < len(keys); i++ {
-				duplicates = append(duplicates, [2]string{keys[i], fmt.Sprintf("port %d duplicate", port)})
-			}
-		}
-	}
-	if len(duplicates) > 0 {
+	duplicateKeys := duplicateKeysToRemove(reg)
+	if len(duplicateKeys) > 0 {
 		if doctorFlagFix {
 			_ = cmdTransaction(home, func(r *registry.Registry) error {
-				for _, dup := range duplicates {
-					delete(r.Entries, dup[0])
+				for _, key := range duplicateKeys {
+					delete(r.Entries, key)
 				}
 				return nil
 			})
-			results = append(results, checkResult{"duplicate ports", "FIXED", fmt.Sprintf("removed %d duplicate entries", len(duplicates))})
+			results = append(results, checkResult{"duplicate ports", "FIXED", fmt.Sprintf("removed %d older duplicate entries", len(duplicateKeys))})
 		} else {
-			results = append(results, checkResult{"duplicate ports", "WARN", fmt.Sprintf("%d duplicate port assignments", len(duplicates))})
+			results = append(results, checkResult{"duplicate ports", "WARN", fmt.Sprintf("%d duplicate port assignments", len(duplicateKeys))})
 		}
 	} else {
 		results = append(results, checkResult{"duplicate ports", "OK", "no duplicates"})
@@ -142,19 +131,25 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		results = append(results, checkResult{"stale paths", "OK", "all project paths exist"})
 	}
 
-	// --- Check 7: leftover lock file ---
-	if _, err := os.Stat(lockPath); err == nil {
+	// --- Check 7: lock file path health ---
+	lockInfo, lockErr := os.Stat(lockPath)
+	switch {
+	case os.IsNotExist(lockErr):
+		results = append(results, checkResult{"lock file", "OK", "lock file will be created on demand"})
+	case lockErr != nil:
+		results = append(results, checkResult{"lock file", "ERROR", fmt.Sprintf("could not stat lock file: %v", lockErr)})
+	case lockInfo.IsDir():
 		if doctorFlagFix {
-			if removeErr := os.Remove(lockPath); removeErr != nil {
-				results = append(results, checkResult{"lock file", "ERROR", fmt.Sprintf("could not remove: %v", removeErr)})
+			if removeErr := os.RemoveAll(lockPath); removeErr != nil {
+				results = append(results, checkResult{"lock file", "ERROR", fmt.Sprintf("could not remove directory at lock path: %v", removeErr)})
 			} else {
-				results = append(results, checkResult{"lock file", "FIXED", "removed stale lock file"})
+				results = append(results, checkResult{"lock file", "FIXED", "removed directory at lock path: " + lockPath})
 			}
 		} else {
-			results = append(results, checkResult{"lock file", "WARN", "stale lock file found: " + lockPath})
+			results = append(results, checkResult{"lock file", "ERROR", "lock path is a directory: " + lockPath})
 		}
-	} else {
-		results = append(results, checkResult{"lock file", "OK", "no stale lock file"})
+	default:
+		results = append(results, checkResult{"lock file", "OK", "lock file path is usable"})
 	}
 
 	printDoctorResults(out, results)
@@ -165,4 +160,35 @@ func printDoctorResults(out interface{ Write([]byte) (int, error) }, results []c
 	for _, r := range results {
 		fmt.Fprintf(out, "[%s] %s: %s\n", r.status, r.name, r.detail)
 	}
+}
+
+func duplicateKeysToRemove(reg *registry.Registry) []string {
+	portKeys := make(map[int][]string)
+	for key, entry := range reg.Entries {
+		portKeys[entry.Port] = append(portKeys[entry.Port], key)
+	}
+
+	ports := make([]int, 0, len(portKeys))
+	for port, keys := range portKeys {
+		if len(keys) > 1 {
+			ports = append(ports, port)
+		}
+	}
+	sort.Ints(ports)
+
+	var duplicates []string
+	for _, port := range ports {
+		keys := append([]string(nil), portKeys[port]...)
+		sort.Slice(keys, func(i, j int) bool {
+			left := reg.Entries[keys[i]]
+			right := reg.Entries[keys[j]]
+			if !left.AllocatedAt.Equal(right.AllocatedAt) {
+				return left.AllocatedAt.After(right.AllocatedAt)
+			}
+			return keys[i] < keys[j]
+		})
+		duplicates = append(duplicates, keys[1:]...)
+	}
+
+	return duplicates
 }

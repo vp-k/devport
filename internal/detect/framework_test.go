@@ -281,3 +281,105 @@ func TestDetectConfigFileTakesPriorityOverGoMod(t *testing.T) {
 		t.Errorf("Detect = %q, want next (config file > go.mod)", got)
 	}
 }
+
+// ---- Phase 3-B: New framework detection ----
+
+func TestDetectCloudflare(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "wrangler.toml", "[build]")
+	if got := Detect(dir); got != "cloudflare" {
+		t.Errorf("Detect = %q, want cloudflare", got)
+	}
+}
+
+func TestDetectNuxtJS(t *testing.T) {
+	for _, cfg := range []string{"nuxt.config.js", "nuxt.config.ts", "nuxt.config.mjs"} {
+		t.Run(cfg, func(t *testing.T) {
+			dir := t.TempDir()
+			writeFile(t, dir, cfg, "export default {}")
+			if got := Detect(dir); got != "nuxt" {
+				t.Errorf("Detect with %s = %q, want nuxt", cfg, got)
+			}
+		})
+	}
+}
+
+func TestDetectSvelteKit(t *testing.T) {
+	for _, cfg := range []string{"svelte.config.js", "svelte.config.ts"} {
+		t.Run(cfg, func(t *testing.T) {
+			dir := t.TempDir()
+			writeFile(t, dir, cfg, "export default {}")
+			if got := Detect(dir); got != "svelte" {
+				t.Errorf("Detect with %s = %q, want svelte", cfg, got)
+			}
+		})
+	}
+}
+
+func TestDetectRemixConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "remix.config.js", "module.exports = {}")
+	if got := Detect(dir); got != "remix" {
+		t.Errorf("Detect = %q, want remix", got)
+	}
+}
+
+func TestDetectRemixFromDependency(t *testing.T) {
+	dir := t.TempDir()
+	writePackageJSONDevDeps(t, dir, map[string]string{"@remix-run/dev": "^2.0.0"})
+	if got := Detect(dir); got != "remix" {
+		t.Errorf("Detect = %q, want remix", got)
+	}
+}
+
+func TestDetectFastify(t *testing.T) {
+	dir := t.TempDir()
+	writePackageJSON(t, dir, map[string]string{"fastify": "^4.0.0"})
+	if got := Detect(dir); got != "fastify" {
+		t.Errorf("Detect = %q, want fastify", got)
+	}
+}
+
+func TestDetectHonoNode(t *testing.T) {
+	dir := t.TempDir()
+	writePackageJSON(t, dir, map[string]string{
+		"hono":              "^4.0.0",
+		"@hono/node-server": "^1.0.0",
+	})
+	if got := Detect(dir); got != "hono" {
+		t.Errorf("Detect = %q, want hono", got)
+	}
+}
+
+func TestDetectHonoWithoutNodeServer(t *testing.T) {
+	// hono alone (no @hono/node-server) → falls through to later checks or ""
+	dir := t.TempDir()
+	writePackageJSON(t, dir, map[string]string{"hono": "^4.0.0"})
+	got := Detect(dir)
+	if got == "hono" {
+		t.Errorf("Detect = %q, hono without @hono/node-server should not match hono", got)
+	}
+}
+
+// Priority: cloudflare config file > bun runtime
+func TestDetectCloudflareTakesPriorityOverBun(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "wrangler.toml", "[build]")
+	writeFile(t, dir, "bun.lockb", "")
+	if got := Detect(dir); got != "cloudflare" {
+		t.Errorf("Detect = %q, want cloudflare (config > runtime)", got)
+	}
+}
+
+// Priority: express > hono (express checked before hono in depChecks)
+func TestDetectExpressTakesPriorityOverHono(t *testing.T) {
+	dir := t.TempDir()
+	writePackageJSON(t, dir, map[string]string{
+		"express":           "^4.0.0",
+		"hono":              "^4.0.0",
+		"@hono/node-server": "^1.0.0",
+	})
+	if got := Detect(dir); got != "express" {
+		t.Errorf("Detect = %q, want express (express > hono)", got)
+	}
+}

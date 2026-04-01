@@ -80,7 +80,7 @@ func runList(cmd *cobra.Command, _ []string) error {
 				Framework:   r.entry.Framework,
 				ProjectPath: r.entry.ProjectPath,
 				KeySource:   string(r.entry.KeySource),
-				AllocatedAt: r.entry.AllocatedAt.String(),
+				AllocatedAt: formatRegistryTime(r.entry.AllocatedAt),
 			}
 		}
 		data, _ := json.Marshal(out)

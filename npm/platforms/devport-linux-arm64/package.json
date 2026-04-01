@@ -1,0 +1,12 @@
+{
+  "name": "@vp-k/devport-linux-arm64",
+  "version": "0.1.0",
+  "description": "devport binary for Linux ARM64",
+  "license": "MIT",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "scripts": {
+    "prepack": "go run ../../../scripts/stage_npm_binaries.go --only devport-linux-arm64"
+  },
+  "files": ["bin/"]
+}

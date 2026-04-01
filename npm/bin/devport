@@ -1,0 +1,39 @@
+#!/usr/bin/env node
+'use strict';
+
+const { execFileSync } = require('child_process');
+const path = require('path');
+const os = require('os');
+
+const PLATFORM_MAP = {
+  'win32-x64':    '@vp-k/devport-win32-x64',
+  'darwin-x64':   '@vp-k/devport-darwin-x64',
+  'darwin-arm64': '@vp-k/devport-darwin-arm64',
+  'linux-x64':    '@vp-k/devport-linux-x64',
+  'linux-arm64':  '@vp-k/devport-linux-arm64',
+};
+
+const key = `${os.platform()}-${os.arch()}`;
+const pkg = PLATFORM_MAP[key];
+
+if (!pkg) {
+  process.stderr.write(`devport: unsupported platform: ${key}\n`);
+  process.exit(1);
+}
+
+let pkgJson;
+try {
+  pkgJson = require.resolve(`${pkg}/package.json`);
+} catch (e) {
+  process.stderr.write(`devport: platform package ${pkg} is not installed\n`);
+  process.exit(1);
+}
+
+const binName = os.platform() === 'win32' ? 'devport.exe' : 'devport';
+const bin = path.join(path.dirname(pkgJson), 'bin', binName);
+
+try {
+  execFileSync(bin, process.argv.slice(2), { stdio: 'inherit' });
+} catch (e) {
+  process.exit(e.status || 1);
+}

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -60,6 +61,30 @@ func TestListJSON(t *testing.T) {
 	}
 	if !strings.Contains(out, "3002") {
 		t.Errorf("expected port 3002 in JSON, got: %q", out)
+	}
+}
+
+func TestListJSONAllocatedAtUsesRegistryTimeFormat(t *testing.T) {
+	cleanupListFlags(t)
+	homeDir := newTestHome(t)
+	seedRegistry(t, homeDir, "json-time-app", 3005)
+
+	out, err := runCmd(t, listCmd, "--json")
+	if err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+
+	var entries []struct {
+		AllocatedAt string `json:"allocatedAt"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &entries); err != nil {
+		t.Fatalf("parse list JSON: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected one entry, got %d", len(entries))
+	}
+	if _, err := parseRegistryTime(entries[0].AllocatedAt); err != nil {
+		t.Fatalf("expected RFC3339 allocatedAt, got %q: %v", entries[0].AllocatedAt, err)
 	}
 }
 

@@ -21,19 +21,25 @@ type EnvConfig struct {
 
 // frameworkEnvDefaults maps framework name → (file, varName).
 var frameworkEnvDefaults = map[string][2]string{
-	"next":    {".env.local", "PORT"},
-	"vite":    {".env.local", "VITE_PORT"},
-	"express": {".env", "PORT"},
-	"angular": {".env.local", "PORT"},
-	"nest":    {".env", "PORT"},
-	"cra":     {".env.local", "PORT"},
-	"bun":     {".env", "PORT"},
-	"deno":    {".env", "PORT"},
-	"go":      {".env", "PORT"},
-	"gin":     {".env", "PORT"},
-	"echo":    {".env", "PORT"},
-	"fiber":   {".env", "PORT"},
-	"chi":     {".env", "PORT"},
+	"next":       {".env.local", "PORT"},
+	"vite":       {".env.local", "VITE_PORT"},
+	"express":    {".env", "PORT"},
+	"angular":    {".env.local", "PORT"},
+	"nest":       {".env", "PORT"},
+	"cra":        {".env.local", "PORT"},
+	"bun":        {".env", "PORT"},
+	"deno":       {".env", "PORT"},
+	"go":         {".env", "PORT"},
+	"gin":        {".env", "PORT"},
+	"echo":       {".env", "PORT"},
+	"fiber":      {".env", "PORT"},
+	"chi":        {".env", "PORT"},
+	"cloudflare": {".dev.vars", "PORT"},
+	"nuxt":       {".env", "PORT"},
+	"svelte":     {".env", "PORT"},
+	"remix":      {".env", "PORT"},
+	"fastify":    {".env", "PORT"},
+	"hono":       {".env", "PORT"},
 }
 
 // EnvConfigFor returns the EnvConfig for the given framework, applying any

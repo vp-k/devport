@@ -1,0 +1,12 @@
+{
+  "name": "@vp-k/devport-darwin-x64",
+  "version": "0.1.0",
+  "description": "devport binary for macOS x64",
+  "license": "MIT",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "scripts": {
+    "prepack": "go run ../../../scripts/stage_npm_binaries.go --only devport-darwin-x64"
+  },
+  "files": ["bin/"]
+}

@@ -1,14 +1,19 @@
 # Build artifacts
-devport
-devport.exe
+/devport
+/devport.exe
 *.exe
 
 # Test coverage
 *.out
 *.html
+.gocache/
+.gomodcache*/
 
 # Go workspace
 /vendor/
+
+# npm packaging artifacts
+npm/platforms/*/bin/
 
 # OS
 .DS_Store

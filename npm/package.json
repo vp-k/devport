@@ -1,0 +1,32 @@
+{
+  "name": "@vp-k/devport",
+  "version": "0.1.0",
+  "description": "Conflict-free port allocation for local dev projects",
+  "license": "MIT",
+  "bin": {
+    "devport": "bin/devport"
+  },
+  "files": [
+    "bin/"
+  ],
+  "scripts": {
+    "stage-binaries": "go run ../scripts/stage_npm_binaries.go"
+  },
+  "optionalDependencies": {
+    "@vp-k/devport-win32-x64": "0.1.0",
+    "@vp-k/devport-darwin-arm64": "0.1.0",
+    "@vp-k/devport-darwin-x64": "0.1.0",
+    "@vp-k/devport-linux-x64": "0.1.0",
+    "@vp-k/devport-linux-arm64": "0.1.0"
+  },
+  "keywords": [
+    "port",
+    "dev",
+    "cli",
+    "conflict"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user01/devport"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@vp-k/devport-win32-x64",
+  "version": "0.1.0",
+  "description": "devport binary for Windows x64",
+  "license": "MIT",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "scripts": {
+    "prepack": "go run ../../../scripts/stage_npm_binaries.go --only devport-win32-x64"
+  },
+  "files": ["bin/"]
+}

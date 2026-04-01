@@ -9,7 +9,7 @@ import (
 
 // Detect returns the framework name for the project in dir, or "" if unknown.
 // Detection priority (highest to lowest):
-//  1. Config files (next/vite/angular)
+//  1. Config files (next/vite/angular/cloudflare/nuxt/svelte/remix)
 //  2. Bun/Deno runtime files
 //  3. Go module (gin/echo/fiber/chi/go)
 //  4. package.json dependencies
@@ -22,6 +22,10 @@ func Detect(dir string) string {
 		{[]string{"next.config.js", "next.config.ts", "next.config.mjs"}, "next"},
 		{[]string{"vite.config.js", "vite.config.ts", "vite.config.mjs"}, "vite"},
 		{[]string{"angular.json"}, "angular"},
+		{[]string{"wrangler.toml"}, "cloudflare"},
+		{[]string{"nuxt.config.js", "nuxt.config.ts", "nuxt.config.mjs"}, "nuxt"},
+		{[]string{"svelte.config.js", "svelte.config.ts"}, "svelte"},
+		{[]string{"remix.config.js"}, "remix"},
 	}
 
 	for _, check := range configChecks {
@@ -59,11 +63,30 @@ func Detect(dir string) string {
 		{"@nestjs/core", "nest"},
 		{"react-scripts", "cra"},
 		{"express", "express"},
+	}
+	for _, check := range depChecks {
+		if _, ok := deps[check.pkg]; ok {
+			return check.framework
+		}
+	}
+
+	// Hono with Node.js server adapter (requires both packages).
+	if _, hasHono := deps["hono"]; hasHono {
+		if _, hasNode := deps["@hono/node-server"]; hasNode {
+			return "hono"
+		}
+	}
+
+	lateChecks := []struct {
+		pkg       string
+		framework string
+	}{
+		{"@remix-run/dev", "remix"},
+		{"fastify", "fastify"},
 		{"next", "next"},
 		{"vite", "vite"},
 	}
-
-	for _, check := range depChecks {
+	for _, check := range lateChecks {
 		if _, ok := deps[check.pkg]; ok {
 			return check.framework
 		}
