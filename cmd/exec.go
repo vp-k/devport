@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 var execCmd = &cobra.Command{
 	Use:   "exec -- <command> [args...]",
-	Short: "Run a command with PORT injected as an environment variable",
+	Short: "Run a command with the allocated port injected",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  runExec,
 }
@@ -52,7 +53,11 @@ func runExec(cmd *cobra.Command, args []string) error {
 
 	var port int
 	if err := cmdTransaction(home, func(reg *registry.Registry) error {
-		isNew := reg.Entries[res.Key] == nil
+		entry := reg.Entries[res.Key]
+		isNew := entry == nil
+		if entry != nil && entry.Framework != "" {
+			framework = entry.Framework
+		}
 		var allocErr error
 		port, allocErr = cmdAllocate(res.Key, framework, reg, allocator.Options{})
 		if allocErr != nil {
@@ -71,14 +76,18 @@ func runExec(cmd *cobra.Command, args []string) error {
 			}
 		} else {
 			reg.Entries[res.Key].LastAccessedAt = now
+			if reg.Entries[res.Key].Framework == "" && framework != "" {
+				reg.Entries[res.Key].Framework = framework
+			}
 		}
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	// Build environment: inherit parent env + inject PORT.
-	env := append(os.Environ(), "PORT="+strconv.Itoa(port))
+	// Build environment: inherit parent env + inject PORT plus any framework-specific variable.
+	env := buildExecEnv(framework, port)
+	args = injectPortFlag(args, framework, port)
 
 	// Set up signal handling so we can forward SIGINT/SIGTERM to the child.
 	sigCh := make(chan os.Signal, 1)
@@ -103,4 +112,69 @@ func runExec(cmd *cobra.Command, args []string) error {
 		cmdOsExit(exitCode)
 	}
 	return nil
+}
+
+func buildExecEnv(framework string, port int) []string {
+	portStr := strconv.Itoa(port)
+	env := append(os.Environ(), "PORT="+portStr)
+
+	cfg := detect.EnvConfigFor(framework, detect.EnvOptions{})
+	if cfg.VarName != "" && cfg.VarName != "PORT" {
+		env = append(env, cfg.VarName+"="+portStr)
+	}
+
+	return env
+}
+
+// injectPortFlag appends the framework's port flag to args when the framework
+// has a standard CLI switch for overriding the dev server port.
+func injectPortFlag(args []string, framework string, port int) []string {
+	flag := detect.PortFlagFor(framework)
+	if flag == "" || len(args) == 0 || hasPortFlagArg(args) {
+		return args
+	}
+
+	portStr := strconv.Itoa(port)
+	if isPackageManagerRun(args) {
+		if hasDoubleDash(args) {
+			return append(args, flag, portStr)
+		}
+		return append(args, "--", flag, portStr)
+	}
+
+	return append(args, flag, portStr)
+}
+
+func hasPortFlagArg(args []string) bool {
+	for _, arg := range args {
+		if arg == "--port" || arg == "-p" {
+			return true
+		}
+		if strings.HasPrefix(arg, "--port=") || strings.HasPrefix(arg, "-p=") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDoubleDash(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return true
+		}
+	}
+	return false
+}
+
+func isPackageManagerRun(args []string) bool {
+	if len(args) < 3 || args[1] != "run" {
+		return false
+	}
+
+	switch args[0] {
+	case "npm", "pnpm", "yarn", "bun":
+		return true
+	default:
+		return false
+	}
 }

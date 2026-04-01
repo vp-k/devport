@@ -2,9 +2,14 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/vp-k/devport/internal/allocator"
 	"github.com/vp-k/devport/internal/registry"
 )
 
@@ -18,11 +23,66 @@ func cleanupExecFlags(t *testing.T) {
 // injectStartProcess replaces cmdStartProcess for the test duration.
 func injectStartProcess(t *testing.T, code int, err error) {
 	t.Helper()
+	injectStartProcessCapture(t, code, err, nil)
+}
+
+type startedProcess struct {
+	name string
+	args []string
+	env  []string
+}
+
+func injectStartProcessCapture(t *testing.T, code int, err error, capture *startedProcess) {
+	t.Helper()
 	orig := cmdStartProcess
-	cmdStartProcess = func(_ string, _ []string, _ []string, _ <-chan os.Signal) (int, error) {
+	cmdStartProcess = func(name string, args []string, env []string, _ <-chan os.Signal) (int, error) {
+		if capture != nil {
+			capture.name = name
+			capture.args = append([]string(nil), args...)
+			capture.env = append([]string(nil), env...)
+		}
 		return code, err
 	}
 	t.Cleanup(func() { cmdStartProcess = orig })
+}
+
+func envValue(env []string, key string) string {
+	prefix := key + "="
+	for _, value := range env {
+		if strings.HasPrefix(value, prefix) {
+			return strings.TrimPrefix(value, prefix)
+		}
+	}
+	return ""
+}
+
+func seedRegistryEntry(t *testing.T, homeDir, key, displayName, projectPath, framework string, port int) {
+	t.Helper()
+
+	reg := &registry.Registry{
+		Version: 1,
+		Meta: registry.Meta{
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		},
+		Entries: map[string]*registry.Entry{
+			key: {
+				Port:           port,
+				KeySource:      registry.KeySourcePackageJSON,
+				DisplayName:    displayName,
+				ProjectPath:    projectPath,
+				Framework:      framework,
+				AllocatedAt:    time.Now().UTC(),
+				LastAccessedAt: time.Now().UTC(),
+			},
+		},
+		Reserved:    []int{},
+		RangePolicy: registry.DefaultRangePolicy(),
+	}
+
+	if err := registry.Save(homeDir, reg); err != nil {
+		t.Fatalf("seed registry: %v", err)
+	}
 }
 
 func TestExecBasic(t *testing.T) {
@@ -243,5 +303,176 @@ func TestExecExistingEntry(t *testing.T) {
 
 	if port1 != port2 {
 		t.Errorf("expected same port on second exec, got %d then %d", port1, port2)
+	}
+}
+
+func TestExecInjectsFrameworkEnvVarAndPortFlagForVite(t *testing.T) {
+	cleanupExecFlags(t)
+	newTestHome(t)
+	dir := newTestProjectWithPackageJSON(t, "exec-vite-app")
+	if err := os.WriteFile(filepath.Join(dir, "vite.config.ts"), []byte("export default {}\n"), 0644); err != nil {
+		t.Fatalf("write vite config: %v", err)
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origWd)
+
+	var started startedProcess
+	injectStartProcessCapture(t, 0, nil, &started)
+
+	_, err := runCmd(t, execCmd, "--", "npm", "run", "dev")
+	if err != nil {
+		t.Fatalf("exec vite: %v", err)
+	}
+
+	port := envValue(started.env, "PORT")
+	if port == "" {
+		t.Fatal("expected PORT to be injected")
+	}
+	if got := envValue(started.env, "VITE_PORT"); got != port {
+		t.Fatalf("expected VITE_PORT=%s, got %q", port, got)
+	}
+	if started.name != "npm" {
+		t.Fatalf("expected process name npm, got %q", started.name)
+	}
+	wantArgs := []string{"run", "dev", "--", "--port", port}
+	if !reflect.DeepEqual(started.args, wantArgs) {
+		t.Fatalf("expected args %v, got %v", wantArgs, started.args)
+	}
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		t.Fatalf("parse port %q: %v", port, err)
+	}
+	if portNum < 5000 || portNum > 5999 {
+		t.Fatalf("expected vite port in [5000,5999], got %d", portNum)
+	}
+}
+
+func TestExecUsesStoredFrameworkForPortInjection(t *testing.T) {
+	cleanupExecFlags(t)
+	homeDir := newTestHome(t)
+	dir := newTestProjectWithPackageJSON(t, "exec-stored-vite-app")
+
+	origWd, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origWd)
+
+	seedRegistryEntry(t, homeDir, "exec-stored-vite-app", "exec-stored-vite-app", dir, "vite", 5500)
+
+	var started startedProcess
+	injectStartProcessCapture(t, 0, nil, &started)
+
+	_, err := runCmd(t, execCmd, "--", "npm", "run", "dev")
+	if err != nil {
+		t.Fatalf("exec with stored framework: %v", err)
+	}
+
+	if got := envValue(started.env, "PORT"); got != "5500" {
+		t.Fatalf("expected PORT=5500, got %q", got)
+	}
+	if got := envValue(started.env, "VITE_PORT"); got != "5500" {
+		t.Fatalf("expected VITE_PORT=5500, got %q", got)
+	}
+	wantArgs := []string{"run", "dev", "--", "--port", "5500"}
+	if !reflect.DeepEqual(started.args, wantArgs) {
+		t.Fatalf("expected args %v, got %v", wantArgs, started.args)
+	}
+}
+
+func TestInjectPortFlagDirect(t *testing.T) {
+	got := injectPortFlag([]string{"vite"}, "vite", 5000)
+	want := []string{"vite", "--port", "5000"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestInjectPortFlagViaNpmRun(t *testing.T) {
+	got := injectPortFlag([]string{"npm", "run", "dev"}, "vite", 5000)
+	want := []string{"npm", "run", "dev", "--", "--port", "5000"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestInjectPortFlagAppendsAfterExistingDoubleDash(t *testing.T) {
+	got := injectPortFlag([]string{"npm", "run", "dev", "--", "--host"}, "vite", 5000)
+	want := []string{"npm", "run", "dev", "--", "--host", "--port", "5000"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestInjectPortFlagSkipsUnknownFramework(t *testing.T) {
+	input := []string{"npm", "run", "dev"}
+	got := injectPortFlag(input, "", 5000)
+	if !reflect.DeepEqual(got, input) {
+		t.Fatalf("expected args to remain unchanged, got %v", got)
+	}
+}
+
+func TestInjectPortFlagSkipsExistingPortFlag(t *testing.T) {
+	input := []string{"npm", "run", "dev", "--", "--port", "5100"}
+	got := injectPortFlag(input, "vite", 5000)
+	if !reflect.DeepEqual(got, input) {
+		t.Fatalf("expected args to remain unchanged, got %v", got)
+	}
+}
+
+func TestBuildExecEnvAddsFrameworkVariable(t *testing.T) {
+	env := buildExecEnv("vite", 5000)
+	if got := envValue(env, "PORT"); got != "5000" {
+		t.Fatalf("expected PORT=5000, got %q", got)
+	}
+	if got := envValue(env, "VITE_PORT"); got != "5000" {
+		t.Fatalf("expected VITE_PORT=5000, got %q", got)
+	}
+}
+
+func TestExecPreservesStoredPortForExistingEntry(t *testing.T) {
+	cleanupExecFlags(t)
+	homeDir := newTestHome(t)
+	dir := newTestProjectWithPackageJSON(t, "exec-existing-vite-port")
+	if err := os.WriteFile(filepath.Join(dir, "vite.config.ts"), []byte("export default {}\n"), 0644); err != nil {
+		t.Fatalf("write vite config: %v", err)
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origWd)
+
+	seedRegistryEntry(t, homeDir, "exec-existing-vite-port", "exec-existing-vite-port", dir, "vite", 5601)
+
+	var started startedProcess
+	injectStartProcessCapture(t, 0, nil, &started)
+
+	_, err := runCmd(t, execCmd, "--", "vite")
+	if err != nil {
+		t.Fatalf("exec existing entry: %v", err)
+	}
+
+	if got := envValue(started.env, "VITE_PORT"); got != "5601" {
+		t.Fatalf("expected VITE_PORT=5601, got %q", got)
+	}
+	wantArgs := []string{"--port", "5601"}
+	if !reflect.DeepEqual(started.args, wantArgs) {
+		t.Fatalf("expected args %v, got %v", wantArgs, started.args)
+	}
+
+	reg, err := cmdRegistryLoad(homeDir)
+	if err != nil {
+		t.Fatalf("load registry: %v", err)
+	}
+	entry := reg.Entries["exec-existing-vite-port"]
+	if entry == nil {
+		t.Fatal("expected registry entry to exist")
+	}
+	port, err := allocator.Allocate("exec-existing-vite-port", "vite", reg, allocator.Options{})
+	if err != nil {
+		t.Fatalf("allocate existing entry: %v", err)
+	}
+	if port != entry.Port {
+		t.Fatalf("expected allocator to preserve port %d, got %d", entry.Port, port)
 	}
 }

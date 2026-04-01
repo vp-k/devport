@@ -6,7 +6,7 @@
 
 Conflict-free port allocation for local development.
 
-`devport` gives each project a stable local port, writes the right env file for the detected framework, and can run child processes with `PORT` injected.
+`devport` gives each project a stable local port, writes the right env file for the detected framework, and can run child processes with the allocated port injected.
 
 Examples in this README use sample port numbers. The actual port depends on what is free inside the framework range.
 
@@ -35,7 +35,7 @@ devport env
 # 3. Check the current registration
 devport status --json
 
-# 4. Run a command with PORT injected
+# 4. Run a command with the allocated port injected
 devport exec -- npm run dev
 ```
 
@@ -54,7 +54,7 @@ devport init --yes
 | `devport get` | Get or allocate the current project's port |
 | `devport env` | Write the detected env file with the correct port variable |
 | `devport init` | Allocate a port, write the env file, and offer common project setup changes |
-| `devport exec -- <command>` | Run a child process with `PORT` injected |
+| `devport exec -- <command>` | Run a child process with the allocated port injected |
 | `devport list` | List every registered project |
 | `devport status` | Show the current project's port and status |
 | `devport free [key|port]` | Remove one registration, or use `--all` to clear everything |

@@ -7,7 +7,7 @@ import (
 	"github.com/vp-k/devport/internal/output"
 )
 
-var version = "0.1.0"
+var version = "0.2.0"
 
 // Out is the global printer used by all commands. Tests can replace it.
 var Out = output.NewPlain(os.Stdout)

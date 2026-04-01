@@ -6,7 +6,7 @@
 
 로컬 개발용 포트 충돌을 줄이기 위한 CLI입니다.
 
-`devport`는 프로젝트별로 안정적인 포트를 배정하고, 감지된 프레임워크에 맞는 env 파일을 작성하며, `PORT`가 주입된 상태로 하위 프로세스를 실행할 수 있게 해줍니다.
+`devport`는 프로젝트별로 안정적인 포트를 배정하고, 감지된 프레임워크에 맞는 env 파일을 작성하며, 배정된 포트가 주입된 상태로 하위 프로세스를 실행할 수 있게 해줍니다.
 
 README의 포트 번호는 예시입니다. 실제 번호는 해당 프레임워크 범위에서 비어 있는 포트에 따라 달라집니다.
 
@@ -35,7 +35,7 @@ devport env
 # 3. 현재 등록 상태 확인
 devport status --json
 
-# 4. PORT를 주입해서 개발 서버 실행
+# 4. 배정된 포트를 주입해서 개발 서버 실행
 devport exec -- npm run dev
 ```
 
@@ -54,7 +54,7 @@ devport init --yes
 | `devport get` | 현재 프로젝트 포트를 조회하거나 새로 배정 |
 | `devport env` | 감지된 env 파일에 포트 변수 기록 |
 | `devport init` | 포트 배정, env 파일 작성, 기본 설정까지 한 번에 수행 |
-| `devport exec -- <command>` | `PORT`를 주입한 상태로 하위 프로세스 실행 |
+| `devport exec -- <command>` | 배정된 포트를 주입한 상태로 하위 프로세스 실행 |
 | `devport list` | 모든 등록 항목 출력 |
 | `devport status` | 현재 프로젝트의 포트와 상태 출력 |
 | `devport free [key|port]` | 특정 등록 해제, `--all`로 전체 해제 가능 |
