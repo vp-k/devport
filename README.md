@@ -17,7 +17,7 @@ Examples in this README use sample port numbers. The actual port depends on what
 npm install -g @vp-k/devport
 
 # Go
-go install github.com/user01/devport@latest
+go install github.com/vp-k/devport@latest
 ```
 
 ## Quick Start

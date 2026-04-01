@@ -17,7 +17,7 @@ README의 포트 번호는 예시입니다. 실제 번호는 해당 프레임워
 npm install -g @vp-k/devport
 
 # Go
-go install github.com/user01/devport@latest
+go install github.com/vp-k/devport@latest
 ```
 
 ## 빠른 시작
